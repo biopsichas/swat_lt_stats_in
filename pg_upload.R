@@ -8,7 +8,7 @@ con <- dbConnect(
   host = "localhost",   # e.g., "localhost" or a remote IP
   port = 5444,          # Default PostgreSQL port
   user = "postgres",
-  password = "Upelis3600"
+  password = "your_password"
 )
 
 
