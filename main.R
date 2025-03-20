@@ -11,7 +11,7 @@ library(openxlsx)
 ## =============================================================================
 
 ## Set years to be included (data should be available in Data folder as well)
-years_to_process <- c("2023", "2024")
+years_to_process <- c("2020", "2021", "2022", "2023", "2024")
 
 ## Provide the list of SWAT codes that are not related to agriculture
 swat_codes_not_agri <- c("BARR", "FRSD", "FRSE", "FRST", "OAK", 

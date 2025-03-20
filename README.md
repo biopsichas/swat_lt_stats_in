@@ -68,8 +68,8 @@ Run the `pg_upload.R` script to upload the processed data to the database.
 - A running PostgreSQL database on the local machine.  
 - Database connection details.
 
-### 4. Update `settings.R` in the River Modeling System  
-Once the data is successfully uploaded, update the `settings.R` file in the river modeling system. Modify the following lines (around 633-640):
+### 4. Update `settings.py` in the River Modeling System  
+Once the data is successfully uploaded, update the `settings.py` file in the river modeling system. Modify the following lines (around 633-640):
 
 ```python
 # 
