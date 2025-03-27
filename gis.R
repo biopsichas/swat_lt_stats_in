@@ -36,7 +36,6 @@ result_df <- data.frame(Var1 = sort(unique(zonal_stat$Var1), na.last = TRUE))
 for(pos in seq_along(zonal_stat$Var1)) {
   next_val <- zonal_stat$Var1[pos + 1]
   if(current_val > next_val | is.na(next_val)) {
-    print(county_sf$KODAS[[county_idx]])
     group_data <- zonal_stat[group_start:pos, ]
     colnames(group_data)[2] <- paste0("A_", county_sf$KODAS[[county_idx]])
     result_df <- left_join(result_df, group_data, by = "Var1")
