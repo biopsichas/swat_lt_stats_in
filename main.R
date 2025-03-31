@@ -117,7 +117,7 @@ for (c1 in unique(crop1$SWATCODE)){
 rm(c1, c1_df, df_c1, crop1, df_codes, crop)
 
 ## Write csv file, seperated by tab
-write.table(crop_final, paste0(out_path, "planned_yield.csv"), row.names = FALSE, 
+write.table(crop_final, paste0(out_path, "/planned_yield.csv"), row.names = FALSE, 
             sep = "\t", quote = FALSE)
 
 ## Prepare table to write into postgres

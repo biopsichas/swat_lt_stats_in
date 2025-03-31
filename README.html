@@ -352,108 +352,302 @@ display: none;
 </div>
 
 
-<div id="update-statistical-information" class="section level1">
-<h1>Update Statistical Information</h1>
-<div id="overview" class="section level2">
-<h2>Overview</h2>
-<p>This script updates statistical information in the Lithuanian river
-modeling system.</p>
+<div id="update-statistical-information-for-lithuanian-river-modeling-system" class="section level1">
+<h1>Update Statistical Information for Lithuanian River Modeling
+System</h1>
+<p>This repository contains R scripts to update statistical information
+(crop yields and livestock data) for <a href="https://srees.sggw.edu.pl/article/view/9790/8738">the Lithuanian
+river modeling system</a>, specifically for integration with the SWAT
+(Soil and Water Assessment Tool) model. The workflow involves
+downloading data from the Lithuanian Statistical Department,
+preprocessing it, and uploading it to a PostgreSQL database for use in
+the modeling system.</p>
+<div id="project-overview" class="section level2">
+<h2>Project Overview</h2>
+<ul>
+<li><strong>Created on</strong>: 2025-03-13<br />
+</li>
+<li><strong>Last Modified</strong>: 2025-03-30<br />
+</li>
+<li><strong>Author</strong>: Svajunas Plunge<br />
+</li>
+<li><strong>Email</strong>: <a href="mailto:svajunas_plunge@sggw.edu.pl" class="email">svajunas_plunge@sggw.edu.pl</a></li>
+</ul>
+<p>This project automates the preprocessing of statistical data on crop
+yields and livestock numbers across Lithuanian municipalities. The
+processed data is formatted for integration into the Lithuanian river
+modeling system, which uses the SWAT model for hydrological
+simulations.</p>
+<div id="key-features" class="section level3">
+<h3>Key Features</h3>
+<ol style="list-style-type: decimal">
+<li><strong>Data Preprocessing</strong>: Processes crop yield and
+livestock data from the Lithuanian Statistical Department.</li>
+<li><strong>Output Generation</strong>: Produces formatted CSV and Excel
+files for use in the modeling system.</li>
+<li><strong>Database Integration</strong>: Uploads processed data to a
+PostgreSQL database.</li>
+<li><strong>Quality Control</strong>: Includes visualization and summary
+statistics for data validation.</li>
+</ol>
 </div>
-<div id="requirements" class="section level2">
-<h2>Requirements</h2>
-<p>Dependencies needed to run the project.</p>
+</div>
+<div id="repository-structure" class="section level2">
+<h2>Repository Structure</h2>
+<pre><code>Update-Statistical-Information/
+├── Data/                          # Input data directory
+│   ├── Stat_Dep/                  # Folder for statistical data (yields and livestock)
+│   ├── Counties/                  # Folder for county shapefiles (Counties.shp)
+│   ├── unique_animal_names.xlsx   # Livestock units data
+│   ├── Yield_Statistics_codes.xlsx # SWAT codes for yield statistics
+│   ├── areas_by_type.txt          # SWAT raster zonal statistics
+│   ├── landuse_swat_raster_lookup.csv # Lookup table for SWAT raster IDs
+│   └── livestock_by_county.xlsx   # Previous livestock data for comparison
+├── Output/                        # Output directory for processed data
+├── main.R                         # Main script to preprocess data
+├── pg_upload.R                    # Script to upload data to PostgreSQL
+└── README.md                      # This file</code></pre>
+</div>
+<div id="prerequisites" class="section level2">
+<h2>Prerequisites</h2>
+<div id="software-requirements" class="section level3">
+<h3>Software Requirements</h3>
 <ul>
 <li>R version &gt;= 4.0.0</li>
-</ul>
-<p>Required packages:</p>
+<li>PostgreSQL (for database integration)</li>
+<li>Required R packages:
 <ul>
-<li>readxl</li>
-<li>dplyr</li>
-<li>ggplot2</li>
-<li>sf</li>
-<li>stringr</li>
-<li>openxlsx</li>
-<li>DBI</li>
-<li>RPostgres</li>
+<li><code>readxl</code></li>
+<li><code>dplyr</code></li>
+<li><code>ggplot2</code></li>
+<li><code>sf</code></li>
+<li><code>stringr</code></li>
+<li><code>openxlsx</code></li>
+<li><code>DBI</code></li>
+<li><code>RPostgres</code></li>
+</ul></li>
 </ul>
-<p>No installation is required - just run the script. However, you need
-to manually download the necessary data from the Statistical Department
-database, available at:<br />
+<p>Install the required R packages using the following command in R:</p>
+<pre class="r"><code>install.packages(c(&quot;readxl&quot;, &quot;dplyr&quot;, &quot;ggplot2&quot;, &quot;sf&quot;, &quot;stringr&quot;, &quot;openxlsx&quot;, &quot;DBI&quot;, &quot;RPostgres&quot;))</code></pre>
+<p>No other installations is required - just run the script. However,
+you need to manually download the necessary data from the Statistical
+Department database, available at:<br />
 <a href="https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/">https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/</a>.</p>
-<p>Two datasets are required:</p>
+</div>
+<div id="data-requirements" class="section level3">
+<h3>Data Requirements</h3>
+<ul>
+<li>Statistical data from the Lithuanian Statistical Department,
+available at: <a href="https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/" class="uri">https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/</a>:
+<ul>
+<li><strong>Livestock numbers</strong>: “Gyvulių ir paukščių skaičius
+metų pradžioje” (Number of livestock at the beginning of each year in
+each municipality).</li>
+<li><strong>Crop yields</strong>: “Žemės ūkio augalų derlingumas”
+(Annual yield of crops in each municipality).</li>
+</ul></li>
+<li>Place these datasets in the <code>Data/Stat_Dep/</code> folder with
+filenames like <code>yieldsYYYY.csv</code> and
+<code>livestockYYYY.csv</code> (e.g., <code>yields2020.csv</code>,
+<code>livestock2020.csv</code>).</li>
+<li>Additional data files (included in the repository):
+<ul>
+<li><code>unique_animal_names.xlsx</code>: Livestock units data.</li>
+<li><code>Yield_Statistics_codes.xlsx</code>: SWAT codes for yield
+statistics.</li>
+<li><code>areas_by_type.txt</code>: SWAT raster zonal statistics.</li>
+<li><code>landuse_swat_raster_lookup.csv</code>: Lookup table for SWAT
+raster IDs.</li>
+<li><code>Counties/Counties.shp</code>: Shapefile for Lithuanian
+counties.</li>
+</ul></li>
+<li>Access to a PostgreSQL database (required for data upload).</li>
+</ul>
+</div>
+</div>
+<div id="usage" class="section level2">
+<h2>Usage</h2>
 <ol style="list-style-type: decimal">
-<li><strong>Livestock numbers</strong>: The number of livestock at the
-beginning of each year in each municipality (<em>Gyvulių ir paukščių
-skaičius metų pradžioje</em>).<br />
-</li>
-<li><strong>Crop yields</strong>: The annual yield of crops in each
-municipality (<em>Žemės ūkio augalų derlingumas</em>).</li>
+<li><strong>Clone the Repository</strong>:</li>
 </ol>
-<p>Example datasets are provided in the repository under the
-<code>Data/Stat_Dep</code> folder.</p>
-</div>
-<div id="file-structure" class="section level2">
-<h2>File Structure</h2>
-<pre><code>├── Data/               # Input data directory
-├── main.R              # Main script to preprocess data
-├── pg_upload.R         # Script to upload data to PostgreSQL
-└── README.md           # This file</code></pre>
-<hr />
-</div>
-<div id="workflow" class="section level2">
-<h2>Workflow</h2>
-<div id="download-and-prepare-data" class="section level3">
-<h3>1. Download and Prepare Data</h3>
+<pre class="bash"><code>  git clone https://github.com/biopsichas/swat_lt_stats_in.git
+  cd Update-Statistical-Information</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li><strong>Download and Prepare Data</strong>:
 <ul>
-<li>Download the required statistical data.<br />
-</li>
-<li>Place the files in the <code>Data/Stat_Dep</code> folder in the
-correct format.</li>
-</ul>
-</div>
-<div id="run-the-main.r-script" class="section level3">
-<h3>2. Run the <code>main.R</code> Script</h3>
-<p>Executing <code>main.R</code> will generate the following files:</p>
+<li>Download the required statistical data from <a href="https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/" class="uri">https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/</a>.</li>
+<li>Place the files in the <code>Data/Stat_Dep/</code> folder with the
+correct naming convention (e.g., <code>yields2020.csv</code>,
+<code>livestock2020.csv</code>).</li>
+</ul></li>
+<li><strong>Configure Settings</strong>:
 <ul>
-<li><code>planned_yield.csv</code><br />
-</li>
-<li><code>livestock_by_county.xlsx</code></li>
-</ul>
-<p>These outputs match the format of previous preprocessing scripts used
-in the modeling system.</p>
-<p>Additionally, <code>main.R</code> produces two key data frames:</p>
+<li>Edit <code>main.R</code> to specify:
 <ul>
-<li><code>crop_pg_in</code><br />
-</li>
-<li><code>livestock_pg_in</code></li>
+<li><code>years_to_process</code>: Years to process (e.g.,
+<code>c(&quot;2020&quot;, &quot;2021&quot;, &quot;2022&quot;, &quot;2023&quot;, &quot;2024&quot;)</code>).</li>
+<li><code>swat_codes_not_agri</code>: SWAT codes not related to
+agriculture.</li>
+<li>Paths to input data files (e.g., <code>livestock_units_path</code>,
+<code>swat_codes_to_yield_stat_path</code>).</li>
+</ul></li>
+<li>Edit <code>pg_upload.R</code> to specify:
+<ul>
+<li>Database connection details (<code>dbname</code>, <code>host</code>,
+<code>port</code>, <code>user</code>, <code>password</code>).</li>
+<li>Schema and table version (e.g.,
+<code>schema_name = &quot;management&quot;</code>,
+<code>version = &quot;v2025&quot;</code>).</li>
+</ul></li>
+</ul></li>
+<li><strong>Run the Preprocessing Script</strong>:</li>
+</ol>
+<ul>
+<li>Execute <code>main.R</code> to preprocess the data:</li>
 </ul>
-<p>These data frames contain formatted data ready for insertion into the
-PostgreSQL database used by the modeling system.</p>
-</div>
-<div id="upload-data-to-the-database" class="section level3">
-<h3>3. Upload Data to the Database</h3>
-<p>Run the <code>pg_upload.R</code> script to upload the processed data
-to the database.</p>
-<p><strong>Requirements:</strong><br />
-- A running PostgreSQL database on the local machine.<br />
-- Database connection details.</p>
-</div>
-<div id="update-settings.py-in-the-river-modeling-system" class="section level3">
-<h3>4. Update <code>settings.py</code> in the River Modeling System</h3>
-<p>Once the data is successfully uploaded, update the
-<code>settings.py</code> file in the river modeling system. Modify the
-following lines (around 633-640):</p>
-<pre class="python"><code># 
-Class Fert:
+<pre class="bash"><code>Rscript main.R</code></pre>
+<ul>
+<li>This will generate the following output files in the
+<code>Output/</code> directory:
+<ul>
+<li><code>Output/planned_yield.csv</code>: Processed crop yield
+data.</li>
+<li><code>Output/livestock_by_county.xlsx</code>: Processed livestock
+data.</li>
+<li>Data frames <code>crop_pg_in</code> and <code>livestock_pg_in</code>
+for database upload.</li>
+</ul></li>
+</ul>
+<ol start="5" style="list-style-type: decimal">
+<li><strong>Upload Data to PostgreSQL</strong>:</li>
+</ol>
+<ul>
+<li>Execute <code>pg_upload.R</code> to upload the processed data to a
+PostgreSQL database:</li>
+</ul>
+<pre class="bash"><code>Rscript pg_upload.R</code></pre>
+<ul>
+<li>This will create two tables in the database:
+<code>management.yield_data_v2025</code> and
+<code>management.livestock_data_v2025</code>.</li>
+</ul>
+<ol start="6" style="list-style-type: decimal">
+<li><strong>Update the River Modeling System</strong>:</li>
+</ol>
+<ul>
+<li>Update the <code>settings.py</code> file in the river modeling
+system (lines ~633-640):</li>
+</ul>
+<pre class="python"><code>Class Fert:
   LIVESTOCK = (&quot;management&quot;, &quot;livestock_data_v2025&quot;)
   PLANNEDYIELD = (&quot;management&quot;, &quot;yield_data_v2025&quot;)</code></pre>
-<p>Ensure that the table names match those written to the database.</p>
+<ul>
+<li>Ensure the table names match those written to the database.</li>
+</ul>
+<ol start="7" style="list-style-type: decimal">
+<li><strong>Run the River Modeling System</strong>:</li>
+</ol>
+<ul>
+<li>The modeling system is now ready to use the updated statistical
+data.</li>
+</ul>
 </div>
-<div id="run-the-modeling-system" class="section level3">
-<h3>5. Run the Modeling System</h3>
-<p>After updating <code>settings.R</code>, the modeling system is ready
-to use the new statistical data.</p>
+<div id="workflow-steps" class="section level2">
+<h2>Workflow Steps</h2>
+<ol style="list-style-type: decimal">
+<li><strong>Download and Prepare Data</strong>:
+<ul>
+<li>Obtain statistical data and place it in the
+<code>Data/Stat_Dep/</code> folder.</li>
+</ul></li>
+<li><strong>Preprocess Data</strong>:
+<ul>
+<li>Run <code>main.R</code> to process crop yields and livestock data,
+generating output files and data frames.</li>
+</ul></li>
+<li><strong>Upload to Database</strong>:
+<ul>
+<li>Run <code>pg_upload.R</code> to upload the processed data to
+PostgreSQL.</li>
+</ul></li>
+<li><strong>Update Modeling System</strong>:
+<ul>
+<li>Modify <code>settings.py</code> in the river modeling system to
+point to the new database tables.</li>
+</ul></li>
+<li><strong>Run Modeling System</strong>:
+<ul>
+<li>Use the updated data in the SWAT-based river modeling system.</li>
+</ul></li>
+</ol>
 </div>
+<div id="example-configuration" class="section level2">
+<h2>Example Configuration</h2>
+<p><code>main.R</code></p>
+<pre class="r"><code>years_to_process &lt;- c(&quot;2020&quot;, &quot;2021&quot;, &quot;2022&quot;, &quot;2023&quot;, &quot;2024&quot;)
+swat_codes_not_agri &lt;- c(&quot;BARR&quot;, &quot;FRSD&quot;, &quot;FRSE&quot;, &quot;FRST&quot;, &quot;OAK&quot;, 
+                         &quot;PINE&quot;, &quot;POPL&quot;, &quot;RNGB&quot;, &quot;UIDU&quot;, &quot;URHD&quot;, 
+                         &quot;URLD&quot;, &quot;URMD&quot;, &quot;URML&quot;, &quot;UTRN&quot;, &quot;WATR&quot;, 
+                         &quot;WETF&quot;, &quot;WETL&quot;, &quot;WILL&quot;)
+livestock_units_path &lt;- &quot;Data/unique_animal_names.xlsx&quot;
+swat_codes_to_yield_stat_path &lt;- &quot;Data/Yield_Statistics_codes.xlsx&quot;
+counties &lt;- &quot;Data/Counties/Counties.shp&quot;
+raster_zonal &lt;- &quot;Data/areas_by_type.txt&quot;
+raster_lookup &lt;- &quot;Data/landuse_swat_raster_lookup.csv&quot;
+out_path &lt;- &quot;Output&quot;</code></pre>
+<p><code>pg_upload.R</code></p>
+<pre class="r"><code>con &lt;- dbConnect(
+  RPostgres::Postgres(),
+  dbname = &quot;LTSWAT2020_coarse&quot;,
+  host = &quot;localhost&quot;,
+  port = 5444,
+  user = &quot;postgres&quot;,
+  password = &quot;your_password&quot;
+)
+schema_name &lt;- &quot;management&quot;
+version &lt;- &quot;v2025&quot;</code></pre>
+</div>
+<div id="outputs" class="section level2">
+<h2>Outputs</h2>
+<ul>
+<li>Processed Files:
+<ul>
+<li><code>Output/planned_yield.csv</code>: Tab-separated file with crop
+yield data.</li>
+<li><code>Output/livestock_by_county.xlsx</code>: Excel file with
+livestock data by county.</li>
+</ul></li>
+<li>Database Tables:
+<ul>
+<li><code>management.yield_data_v2025</code>: Crop yield data.</li>
+<li><code>management.livestock_data_v2025</code>: Livestock data.</li>
+</ul></li>
+<li>Quality Control:
+<ul>
+<li>Summary statistics and maps generated in <code>main.R</code> for
+data validation (e.g., livestock unit maps).</li>
+</ul></li>
+</ul>
+</div>
+<div id="notes" class="section level2">
+<h2>Notes</h2>
+<ul>
+<li>Ensure all file paths in <code>main.R</code> are accessible and
+correctly formatted.</li>
+<li>The <code>Counties.shp</code> shapefile uses the Lithuanian
+Coordinate System (EPSG:3346).</li>
+<li>Update the password in <code>pg_upload.R</code> to match your
+PostgreSQL database credentials.</li>
+<li>Processing time depends on data size and system resources.</li>
+</ul>
+</div>
+<div id="acknowledgments" class="section level2">
+<h2>Acknowledgments</h2>
+<p>This work was carried out within the LIFE22-IPE-LT-LIFE-SIP-Vanduo
+project (Integratedwater management in Lithuania, ref:
+LIFE22-IPE-LT-LIFE-SIP-Vanduo/101104645,cinea.ec.europa.eu), funded by
+the European Union LIFE program under the grant agreementNo
+101104645.</p>
 </div>
 </div>
 
