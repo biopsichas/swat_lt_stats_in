@@ -357,11 +357,10 @@ display: none;
 System</h1>
 <p>This repository contains R scripts to update statistical information
 (crop yields and livestock data) for <a href="https://srees.sggw.edu.pl/article/view/9790/8738">the Lithuanian
-river modeling system</a>, specifically for integration with the SWAT
-(Soil and Water Assessment Tool) model. The workflow involves
-downloading data from the Lithuanian Statistical Department,
-preprocessing it, and uploading it to a PostgreSQL database for use in
-the modeling system.</p>
+river modeling system</a>, which runs the SWAT (Soil and Water
+Assessment Tool) model. The workflow involves downloading data from the
+Lithuanian Statistical Department, preprocessing it, and uploading it to
+a PostgreSQL database for use in the modeling system.</p>
 <div id="project-overview" class="section level2">
 <h2>Project Overview</h2>
 <ul>
@@ -381,6 +380,8 @@ simulations.</p>
 <div id="key-features" class="section level3">
 <h3>Key Features</h3>
 <ol style="list-style-type: decimal">
+<li><strong>Zonal Statistics</strong>: Computes the area of each land
+use type per county using a land use raster.</li>
 <li><strong>Data Preprocessing</strong>: Processes crop yield and
 livestock data from the Lithuanian Statistical Department.</li>
 <li><strong>Output Generation</strong>: Produces formatted CSV and Excel
@@ -397,7 +398,7 @@ statistics for data validation.</li>
 <pre><code>Update-Statistical-Information/
 ├── Data/                          # Input data directory
 │   ├── Stat_Dep/                  # Folder for statistical data (yields and livestock)
-│   ├── Counties/                  # Folder for county shapefiles (Counties.shp)
+│   ├── Counties/                  # Folder for county shapefile (Counties.shp)
 │   ├── unique_animal_names.xlsx   # Livestock units data
 │   ├── Yield_Statistics_codes.xlsx # SWAT codes for yield statistics
 │   ├── areas_by_type.txt          # SWAT raster zonal statistics
@@ -406,6 +407,7 @@ statistics for data validation.</li>
 ├── Output/                        # Output directory for processed data
 ├── main.R                         # Main script to preprocess data
 ├── pg_upload.R                    # Script to upload data to PostgreSQL
+├── gis.R                          # Script to compute zonal statistics for land use raster
 └── README.md                      # This file</code></pre>
 </div>
 <div id="prerequisites" class="section level2">
@@ -417,10 +419,13 @@ statistics for data validation.</li>
 <li>PostgreSQL (for database integration)</li>
 <li>Required R packages:
 <ul>
-<li><code>readxl</code></li>
+<li><code>terra</code></li>
 <li><code>dplyr</code></li>
 <li><code>ggplot2</code></li>
+<li><code>tidyr</code></li>
+<li><code>exactextractr</code></li>
 <li><code>sf</code></li>
+<li><code>readxl</code></li>
 <li><code>stringr</code></li>
 <li><code>openxlsx</code></li>
 <li><code>DBI</code></li>
@@ -428,7 +433,7 @@ statistics for data validation.</li>
 </ul></li>
 </ul>
 <p>Install the required R packages using the following command in R:</p>
-<pre class="r"><code>install.packages(c(&quot;readxl&quot;, &quot;dplyr&quot;, &quot;ggplot2&quot;, &quot;sf&quot;, &quot;stringr&quot;, &quot;openxlsx&quot;, &quot;DBI&quot;, &quot;RPostgres&quot;))</code></pre>
+<pre class="r"><code>install.packages(c(&quot;terra&quot;, &quot;dplyr&quot;, &quot;ggplot2&quot;, &quot;tidyr&quot;, &quot;exactextractr&quot;, &quot;sf&quot;, &quot;readxl&quot;, &quot;stringr&quot;, &quot;openxlsx&quot;, &quot;DBI&quot;, &quot;RPostgres&quot;))</code></pre>
 <p>No other installations is required - just run the script. However,
 you need to manually download the necessary data from the Statistical
 Department database, available at:<br />
@@ -450,6 +455,11 @@ each municipality).</li>
 filenames like <code>yieldsYYYY.csv</code> and
 <code>livestockYYYY.csv</code> (e.g., <code>yields2020.csv</code>,
 <code>livestock2020.csv</code>).</li>
+<li>Land use raster for zonal statistics:
+<ul>
+<li><code>LUraster_bck.tif</code>: Land use raster (e.g., at
+<code>Your path/swat_lt/Projects/Setup_2020_common/Data/Rasters/LUraster_bck.tif</code>).</li>
+</ul></li>
 <li>Additional data files (included in the repository):
 <ul>
 <li><code>unique_animal_names.xlsx</code>: Livestock units data.</li>
@@ -473,6 +483,22 @@ counties.</li>
 <pre class="bash"><code>  git clone https://github.com/biopsichas/swat_lt_stats_in.git
   cd Update-Statistical-Information</code></pre>
 <ol start="2" style="list-style-type: decimal">
+<li><strong>Generate Zonal Statistics (if needed)</strong>:
+<ul>
+<li>Edit <code>gis.R</code> to specify:
+<ul>
+<li>Path to the land use raster (<code>lu_raster_path</code>).</li>
+<li>Path to the counties shapefile (<code>counties_path</code>).</li>
+</ul></li>
+<li>Run <code>gis.R</code> to compute the area of each land use type per
+county:</li>
+</ul>
+<pre class="bash"><code>  Rscript gis.R</code></pre>
+<ul>
+<li>This will generate <code>Data/areas_by_type_new.txt</code>, which
+should be renamed to <code>Data/areas_by_type.txt</code> for use in
+<code>main.R</code>.</li>
+</ul></li>
 <li><strong>Download and Prepare Data</strong>:
 <ul>
 <li>Download the required statistical data from <a href="https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/" class="uri">https://osp.stat.gov.lt/statistiniu-rodikliu-analize#/</a>.</li>
@@ -518,7 +544,7 @@ data.</li>
 for database upload.</li>
 </ul></li>
 </ul>
-<ol start="5" style="list-style-type: decimal">
+<ol start="6" style="list-style-type: decimal">
 <li><strong>Upload Data to PostgreSQL</strong>:</li>
 </ol>
 <ul>
@@ -531,7 +557,7 @@ PostgreSQL database:</li>
 <code>management.yield_data_v2025</code> and
 <code>management.livestock_data_v2025</code>.</li>
 </ul>
-<ol start="6" style="list-style-type: decimal">
+<ol start="7" style="list-style-type: decimal">
 <li><strong>Update the River Modeling System</strong>:</li>
 </ol>
 <ul>
@@ -544,7 +570,7 @@ system (lines ~633-640):</li>
 <ul>
 <li>Ensure the table names match those written to the database.</li>
 </ul>
-<ol start="7" style="list-style-type: decimal">
+<ol start="8" style="list-style-type: decimal">
 <li><strong>Run the River Modeling System</strong>:</li>
 </ol>
 <ul>
@@ -555,6 +581,11 @@ data.</li>
 <div id="workflow-steps" class="section level2">
 <h2>Workflow Steps</h2>
 <ol style="list-style-type: decimal">
+<li><strong>Generate Zonal Statistics</strong>:
+<ul>
+<li>Run <code>gis.R</code> to compute the area of each land use type per
+county, producing <code>areas_by_type.txt</code>.</li>
+</ul></li>
 <li><strong>Download and Prepare Data</strong>:
 <ul>
 <li>Obtain statistical data and place it in the
@@ -583,6 +614,9 @@ point to the new database tables.</li>
 </div>
 <div id="example-configuration" class="section level2">
 <h2>Example Configuration</h2>
+<p><code>gis.R</code></p>
+<pre class="r"><code>counties_path &lt;- &quot;Data/Counties/Counties.shp&quot;
+lu_raster_path &lt;- &quot;G:/LIFE_AAA/swat_lt/Projects/Setup_2020_common/Data/Rasters/LUraster_bck.tif&quot;</code></pre>
 <p><code>main.R</code></p>
 <pre class="r"><code>years_to_process &lt;- c(&quot;2020&quot;, &quot;2021&quot;, &quot;2022&quot;, &quot;2023&quot;, &quot;2024&quot;)
 swat_codes_not_agri &lt;- c(&quot;BARR&quot;, &quot;FRSD&quot;, &quot;FRSE&quot;, &quot;FRST&quot;, &quot;OAK&quot;, 
@@ -610,6 +644,12 @@ version &lt;- &quot;v2025&quot;</code></pre>
 <div id="outputs" class="section level2">
 <h2>Outputs</h2>
 <ul>
+<li>Zonal Statistics:
+<ul>
+<li><code>Data/areas_by_type_new.txt</code>: Area of each land use type
+per county (rename to <code>areas_by_type.txt</code> for use in
+main.R).</li>
+</ul></li>
 <li>Processed Files:
 <ul>
 <li><code>Output/planned_yield.csv</code>: Tab-separated file with crop
@@ -626,18 +666,24 @@ livestock data by county.</li>
 <ul>
 <li>Summary statistics and maps generated in <code>main.R</code> for
 data validation (e.g., livestock unit maps).</li>
+<li>Validation plots and area difference checks
+in<code>gis.R</code>.</li>
 </ul></li>
 </ul>
 </div>
 <div id="notes" class="section level2">
 <h2>Notes</h2>
 <ul>
-<li>Ensure all file paths in <code>main.R</code> are accessible and
-correctly formatted.</li>
+<li>Ensure all file paths in <code>gis.R</code>, <code>main.R</code>,
+and <code>pg_upload.R</code> are accessible and correctly
+formatted.</li>
 <li>The <code>Counties.shp</code> shapefile uses the Lithuanian
 Coordinate System (EPSG:3346).</li>
 <li>Update the password in <code>pg_upload.R</code> to match your
 PostgreSQL database credentials.</li>
+<li>The <code>gis.R</code> script includes a validation check to ensure
+the total area difference between the raster and vector data is less
+than 0.2%.</li>
 <li>Processing time depends on data size and system resources.</li>
 </ul>
 </div>
